@@ -1,0 +1,50 @@
+{
+  "name": "devto-mcp",
+  "version": "0.1.0",
+  "description": "DevTo MCP server — AI work management for Claude Code",
+  "main": "dist/index.js",
+  "bin": {
+    "devto-mcp": "./bin/devto-mcp.js",
+    "devto": "./bin/devto.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "type-check": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/devto-dev/devto-mcp.git"
+  },
+  "homepage": "https://devto.dev",
+  "bugs": {
+    "url": "https://github.com/devto-dev/devto-mcp/issues"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.27.0",
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.9",
+    "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "claude",
+    "claude-code",
+    "devto",
+    "project-management",
+    "ai",
+    "work-management",
+    "jira"
+  ],
+  "license": "MIT"
+}
