@@ -46,12 +46,25 @@ type TasksResponse = {
 
 type StatusResponse = {
   project: string;
-  jira_instance: string;
+  workspace_url: string;
   total_tasks: number;
   open_tasks: number;
   in_progress_tasks: number;
   completed_tasks: number;
   current_sprint: string | null;
+};
+
+type ProjectSummaryResponse = {
+  project: string;
+  issues: Array<{
+    key: string;
+    title: string;
+    status: string;
+    assignee: string | null;
+    parent_key: string | null;
+    epic_name: string | null;
+  }>;
+  total: number;
 };
 
 // ─── Anthropic system prompt ────────────────────────────────────────────────
@@ -405,6 +418,29 @@ export async function updateTask(issueKey: string, status: string): Promise<stri
 
   await callApi("PUT", `/api/v1/task/${resolved.key}`, { status });
   return `Moved **${resolved.key}** to \`${status}\`.`;
+}
+
+export async function getProjectSummary(): Promise<string> {
+  const res = await callApi<ProjectSummaryResponse>("GET", "/api/v1/project/summary");
+
+  if (res.total === 0) {
+    return "No open or in-progress tasks found in the project.";
+  }
+
+  const lines = [
+    `## Project Summary — ${res.project} (${res.total} active)`,
+    ``,
+  ];
+
+  res.issues.forEach((issue) => {
+    const parts = [`**${issue.key}** — ${issue.title} (${issue.status})`];
+    if (issue.assignee) parts.push(`  Assignee: ${issue.assignee}`);
+    if (issue.parent_key) parts.push(`  Parent: ${issue.parent_key}${issue.epic_name ? ` — ${issue.epic_name}` : ""}`);
+    lines.push(parts.join("\n"));
+    lines.push(``);
+  });
+
+  return lines.join("\n");
 }
 
 export async function getStatus(): Promise<string> {

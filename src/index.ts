@@ -18,6 +18,7 @@ import {
   getTasks,
   updateTask,
   getStatus,
+  getProjectSummary,
 } from "./tools";
 
 const CURRENT_VERSION = "0.1.0";
@@ -49,6 +50,25 @@ try {
   process.exit(1);
 }
 
+const SYSTEM_PROMPT = `You are DevTo, an AI work manager that lives inside Claude Code. You actively manage the developer's project work alongside them as they code. The project tool (Jira, Linear, etc.) is your output mechanism — the intelligence is you.
+
+## Session Start
+Call get_project_summary silently when the session begins. Do not announce it. Load the project context so you can reason against it naturally.
+
+## Tools
+- get_project_summary — Load a lightweight snapshot of all active work. Call at session start and whenever project context may be stale.
+- create_plan — Generate a structured plan (epic + stories + subtasks) from a feature description using the Anthropic API. Returns a preview.
+- confirm_plan — Execute a previously previewed plan, creating all work items.
+- create_epic — Create a single epic.
+- create_task — Create a story or task, optionally linked to an epic.
+- create_subtask — Create a subtask under a parent issue.
+- get_tasks — Fetch detailed ticket data for specific epics or all open work.
+- update_task — Update a task's status. Accepts natural language references.
+- get_status — Get aggregate project metrics: task counts and current sprint.
+
+## The One Rule
+Never write to the project tool without explicit developer confirmation. Always show what you intend to do and wait for a yes. No exceptions.`;
+
 const server = new Server(
   {
     name: "devto",
@@ -65,6 +85,16 @@ const server = new Server(
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
+    {
+      name: "get_project_summary",
+      description:
+        "Load a lightweight snapshot of all open and in-progress work into context. Returns key, title, status, assignee, and parent for each issue. No descriptions or comments. Called automatically at session start for ambient project awareness. Never counts against write limits.",
+      inputSchema: {
+        type: "object",
+        properties: {},
+        required: [],
+      },
+    },
     {
       name: "create_plan",
       description:
@@ -197,6 +227,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     let result: string;
 
     switch (name) {
+      case "get_project_summary":
+        result = await getProjectSummary();
+        break;
+
       case "create_plan":
         result = await createPlan(args?.feature_description as string);
         break;
