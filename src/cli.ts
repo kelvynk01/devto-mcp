@@ -73,7 +73,7 @@ async function validateKey(apiKey: string): Promise<boolean> {
     const res = await fetch(`${apiUrl}/api/v1/status`, {
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        "X-DevTo-Version": "0.1.2",
+        "X-DevTo-Version": "0.1.3",
       },
     });
     // 200 = valid key, 401 = invalid
@@ -165,27 +165,26 @@ async function status() {
     const res = await fetch(`${config.api_url}/api/v1/status`, {
       headers: {
         Authorization: `Bearer ${config.api_key}`,
-        "X-DevTo-Version": "0.1.2",
+        "X-DevTo-Version": "0.1.3",
       },
     });
 
     if (res.ok) {
       const data = (await res.json()) as {
         project: string;
-        jira_instance: string;
+        workspace_url: string;
         total_tasks: number;
+        open_tasks: number;
         in_progress_tasks: number;
-        plan_calls_this_month?: number;
-        plan_calls_limit?: number;
+        completed_tasks: number;
+        current_sprint: string | null;
       };
       console.log("Connected");
       console.log(`Project: ${data.project}`);
-      console.log(`Workspace: ${data.jira_instance}`);
-      console.log(`Tasks: ${data.total_tasks} total, ${data.in_progress_tasks} in progress`);
-      if (data.plan_calls_this_month !== undefined) {
-        console.log(
-          `Plan calls this month: ${data.plan_calls_this_month}${data.plan_calls_limit ? ` / ${data.plan_calls_limit}` : ""}`
-        );
+      console.log(`Workspace: ${data.workspace_url}`);
+      console.log(`Tasks: ${data.total_tasks} total, ${data.in_progress_tasks} in progress, ${data.completed_tasks} done`);
+      if (data.current_sprint) {
+        console.log(`Sprint: ${data.current_sprint}`);
       }
     } else if (res.status === 401) {
       console.log("Invalid API key");
@@ -307,7 +306,7 @@ async function doctor() {
     const res = await fetch(`${apiUrl}/api/v1/status`, {
       headers: {
         ...(config?.api_key ? { Authorization: `Bearer ${config.api_key}` } : {}),
-        "X-DevTo-Version": "0.1.2",
+        "X-DevTo-Version": "0.1.3",
       },
     });
 
@@ -332,7 +331,7 @@ async function doctor() {
       const res = await fetch(`${apiUrl}/api/v1/status`, {
         headers: {
           Authorization: `Bearer ${config.api_key}`,
-          "X-DevTo-Version": "0.1.2",
+          "X-DevTo-Version": "0.1.3",
         },
       });
       if (res.status === 401) {
@@ -357,16 +356,16 @@ async function doctor() {
       const res = await fetch(`${apiUrl}/api/v1/status`, {
         headers: {
           Authorization: `Bearer ${config.api_key}`,
-          "X-DevTo-Version": "0.1.2",
+          "X-DevTo-Version": "0.1.3",
         },
       });
       if (res.ok) {
-        const data = (await res.json()) as { jira_instance?: string };
-        if (data.jira_instance) {
-          console.log(`OK (${data.jira_instance})`);
+        const data = (await res.json()) as { workspace_url?: string };
+        if (data.workspace_url) {
+          console.log(`OK (${data.workspace_url})`);
         } else {
           console.log("FAIL (no workspace connected)");
-          console.log("  Fix: Connect your workspace at https://devto.ai/dashboard/settings/jira");
+          console.log("  Fix: Connect your workspace at https://devto.ai/dashboard/settings");
         }
       } else {
         console.log("FAIL");
@@ -407,7 +406,7 @@ async function sync() {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${config.api_key}`,
-        "X-DevTo-Version": "0.1.2",
+        "X-DevTo-Version": "0.1.3",
       },
     });
 

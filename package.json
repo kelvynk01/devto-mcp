@@ -1,6 +1,6 @@
 {
   "name": "devto-mcp",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "DevTo MCP server — AI work management for Claude Code",
   "main": "dist/index.js",
   "bin": {
