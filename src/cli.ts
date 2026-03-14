@@ -76,7 +76,7 @@ async function validateKey(apiKey: string): Promise<boolean> {
     const res = await fetch(`${apiUrl}/api/v1/status`, {
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        "X-DevTo-Version": "0.1.7",
+        "X-DevTo-Version": "0.1.8",
       },
     });
     // 200 = valid key, 401 = invalid
@@ -178,7 +178,7 @@ async function status() {
     const res = await fetch(`${config.api_url}/api/v1/status`, {
       headers: {
         Authorization: `Bearer ${config.api_key}`,
-        "X-DevTo-Version": "0.1.7",
+        "X-DevTo-Version": "0.1.8",
       },
     });
 
@@ -253,10 +253,13 @@ async function init() {
   }
 
   // Inject/update devto block
-  (mcpConfig.mcpServers as Record<string, unknown>)["devto"] = {
-    command: "devto-mcp",
-    env: envBlock,
-  };
+  // On Windows, Claude Code can't spawn npm shims directly — needs cmd /c npx wrapper
+  const isWindows = process.platform === "win32";
+  const serverBlock: Record<string, unknown> = isWindows
+    ? { command: "cmd", args: ["/c", "npx", "-y", "devto-mcp"], env: envBlock }
+    : { command: "npx", args: ["-y", "devto-mcp"], env: envBlock };
+
+  (mcpConfig.mcpServers as Record<string, unknown>)["devto"] = serverBlock;
 
   // Write config
   const dir = path.dirname(configPath);
@@ -298,7 +301,7 @@ async function doctor() {
     const res = await fetch(`${apiUrl}/api/v1/status`, {
       headers: {
         ...(config?.api_key ? { Authorization: `Bearer ${config.api_key}` } : {}),
-        "X-DevTo-Version": "0.1.7",
+        "X-DevTo-Version": "0.1.8",
       },
     });
 
@@ -323,7 +326,7 @@ async function doctor() {
       const res = await fetch(`${apiUrl}/api/v1/status`, {
         headers: {
           Authorization: `Bearer ${config.api_key}`,
-          "X-DevTo-Version": "0.1.7",
+          "X-DevTo-Version": "0.1.8",
         },
       });
       if (res.status === 401) {
@@ -348,7 +351,7 @@ async function doctor() {
       const res = await fetch(`${apiUrl}/api/v1/status`, {
         headers: {
           Authorization: `Bearer ${config.api_key}`,
-          "X-DevTo-Version": "0.1.7",
+          "X-DevTo-Version": "0.1.8",
         },
       });
       if (res.ok) {
@@ -419,7 +422,7 @@ async function sync() {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${config.api_key}`,
-        "X-DevTo-Version": "0.1.7",
+        "X-DevTo-Version": "0.1.8",
       },
     });
 
@@ -552,19 +555,15 @@ Usage:
   devto help                           Show this help message
   devto --version                      Show installed version
 
-After logging in, run \`devto init\` in your project to add DevTo to .mcp.json,
-or manually add this to your project's .mcp.json:
+After logging in, run \`devto init\` in your project to add DevTo to .mcp.json.
 
-  {
-    "mcpServers": {
-      "devto": {
-        "command": "devto-mcp",
-        "env": {
-          "DEVTO_API_KEY": "your-api-key"
-        }
-      }
-    }
-  }
+Manual setup (add to your project's .mcp.json):
+
+  Windows:
+  { "mcpServers": { "devto": { "command": "cmd", "args": ["/c", "npx", "-y", "devto-mcp"], "env": { "DEVTO_API_KEY": "your-key" } } } }
+
+  macOS/Linux:
+  { "mcpServers": { "devto": { "command": "npx", "args": ["-y", "devto-mcp"], "env": { "DEVTO_API_KEY": "your-key" } } } }
 `);
 }
 
