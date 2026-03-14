@@ -34,20 +34,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - name: Verify npm auth
-        run: |
-          echo "Registry URL:"
-          npm config get registry
-          echo "Token set: $(if [ -n "$NODE_AUTH_TOKEN" ]; then echo 'yes'; else echo 'NO - MISSING'; fi)"
-          npm whoami || echo "npm whoami failed - token may be invalid"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: Publish
-        run: |
+      - run: |
           CURRENT=$(npm view devto-mcp version 2>/dev/null || echo "0.0.0")
           LOCAL=$(node -p "require('./package.json').version")
-          echo "Current published: $CURRENT"
-          echo "Local version: $LOCAL"
           if [ "$CURRENT" != "$LOCAL" ]; then
             npm publish --access public
           else

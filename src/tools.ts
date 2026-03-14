@@ -225,7 +225,23 @@ export async function resolveIssueKey(
 
 export async function createPlan(featureDescription: string): Promise<string> {
   // 1. Get Anthropic key from local config
-  const anthropicKey = getAnthropicKey();
+  let anthropicKey: string;
+  try {
+    anthropicKey = getAnthropicKey();
+  } catch {
+    return [
+      "**Anthropic API key not configured.**",
+      "",
+      "The `create_plan` tool uses the Anthropic API to generate AI-powered plans locally on your machine.",
+      "",
+      "To set it up, run this in your terminal:",
+      "```",
+      "devto config set anthropic-key sk-ant-xxxx",
+      "```",
+      "",
+      "Get your key at: https://console.anthropic.com/settings/keys",
+    ].join("\n");
+  }
 
   // 2. Call Anthropic API directly
   const anthropic = new Anthropic({ apiKey: anthropicKey });

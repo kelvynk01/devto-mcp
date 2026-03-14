@@ -73,7 +73,7 @@ async function validateKey(apiKey: string): Promise<boolean> {
     const res = await fetch(`${apiUrl}/api/v1/status`, {
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        "X-DevTo-Version": "0.1.0",
+        "X-DevTo-Version": "0.1.1",
       },
     });
     // 200 = valid key, 401 = invalid
@@ -110,7 +110,30 @@ async function login() {
 
   console.log("OK\n");
   console.log("Logged in! Your API key is saved to ~/.devto/config.json\n");
-  console.log("Next step: add DevTo to your Claude Code MCP config.");
+
+  // Prompt for Anthropic key
+  console.log("────────────────────────────────────────────────");
+  console.log("DevTo uses the Anthropic API to generate AI plans locally.");
+  console.log("You need an Anthropic API key for the `create_plan` feature.");
+  console.log("Get one at: https://console.anthropic.com/settings/keys\n");
+
+  const setupAnthropic = await prompt("Set up Anthropic key now? (y/n): ");
+
+  if (setupAnthropic.toLowerCase() === "y" || setupAnthropic.toLowerCase() === "yes") {
+    const anthropicKey = await prompt("Paste your Anthropic API key: ", true);
+
+    if (!anthropicKey || !anthropicKey.startsWith("sk-ant-")) {
+      console.error("\nInvalid key format. Anthropic keys start with 'sk-ant-'.");
+      console.log("You can set it later: devto config set anthropic-key sk-ant-xxxx\n");
+    } else {
+      setAnthropicKey(anthropicKey);
+      console.log("Anthropic key saved!\n");
+    }
+  } else {
+    console.log("\nSkipped. You can set it later: devto config set anthropic-key sk-ant-xxxx\n");
+  }
+
+  console.log("Next step: run `devto init` to configure Claude Code MCP.");
   console.log("Run `devto status` to verify your connection.\n");
 }
 
@@ -142,7 +165,7 @@ async function status() {
     const res = await fetch(`${config.api_url}/api/v1/status`, {
       headers: {
         Authorization: `Bearer ${config.api_key}`,
-        "X-DevTo-Version": "0.1.0",
+        "X-DevTo-Version": "0.1.1",
       },
     });
 
@@ -258,7 +281,18 @@ async function init() {
   } else {
     console.log(`\nAPI key (${apiKey.slice(0, 12)}...) written to MCP config.`);
   }
-  console.log("Restart Claude Code to pick up the changes.\n");
+
+  // Warn if Anthropic key is missing
+  try {
+    getAnthropicKey();
+  } catch {
+    console.log("\n⚠ Anthropic API key not configured.");
+    console.log("  AI plan generation (create_plan) requires an Anthropic key.");
+    console.log("  Run: devto config set anthropic-key sk-ant-xxxx");
+    console.log("  Get one at: https://console.anthropic.com/settings/keys");
+  }
+
+  console.log("\nRestart Claude Code to pick up the changes.\n");
 }
 
 async function doctor() {
@@ -273,7 +307,7 @@ async function doctor() {
     const res = await fetch(`${apiUrl}/api/v1/status`, {
       headers: {
         ...(config?.api_key ? { Authorization: `Bearer ${config.api_key}` } : {}),
-        "X-DevTo-Version": "0.1.0",
+        "X-DevTo-Version": "0.1.1",
       },
     });
 
@@ -298,7 +332,7 @@ async function doctor() {
       const res = await fetch(`${apiUrl}/api/v1/status`, {
         headers: {
           Authorization: `Bearer ${config.api_key}`,
-          "X-DevTo-Version": "0.1.0",
+          "X-DevTo-Version": "0.1.1",
         },
       });
       if (res.status === 401) {
@@ -323,7 +357,7 @@ async function doctor() {
       const res = await fetch(`${apiUrl}/api/v1/status`, {
         headers: {
           Authorization: `Bearer ${config.api_key}`,
-          "X-DevTo-Version": "0.1.0",
+          "X-DevTo-Version": "0.1.1",
         },
       });
       if (res.ok) {
@@ -373,7 +407,7 @@ async function sync() {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${config.api_key}`,
-        "X-DevTo-Version": "0.1.0",
+        "X-DevTo-Version": "0.1.1",
       },
     });
 
@@ -434,6 +468,49 @@ async function configSet() {
   console.log("You can now use `devto create_plan` with local AI generation.\n");
 }
 
+async function uninstall() {
+  console.log("\nDevTo Uninstall\n");
+
+  const confirm = await prompt("This will remove all DevTo config and MCP settings. Continue? (y/n): ");
+  if (confirm.toLowerCase() !== "y" && confirm.toLowerCase() !== "yes") {
+    console.log("Cancelled.\n");
+    return;
+  }
+
+  // 1. Remove devto from Claude Code MCP config
+  const candidates = [
+    path.join(process.cwd(), ".claude", "claude_desktop_config.json"),
+    path.join(os.homedir(), ".config", "claude", "claude_desktop_config.json"),
+    path.join(os.homedir(), "Library", "Application Support", "Claude", "claude_desktop_config.json"),
+  ];
+
+  for (const configPath of candidates) {
+    if (fs.existsSync(configPath)) {
+      try {
+        const raw = fs.readFileSync(configPath, "utf-8");
+        const mcpConfig = JSON.parse(raw);
+        if (mcpConfig.mcpServers?.devto) {
+          delete mcpConfig.mcpServers.devto;
+          fs.writeFileSync(configPath, JSON.stringify(mcpConfig, null, 2));
+          console.log(`Removed devto from MCP config: ${configPath}`);
+        }
+      } catch {
+        // Skip corrupt configs
+      }
+    }
+  }
+
+  // 2. Remove ~/.devto config directory
+  const configDir = path.join(os.homedir(), ".devto");
+  if (fs.existsSync(configDir)) {
+    fs.rmSync(configDir, { recursive: true, force: true });
+    console.log("Removed ~/.devto config directory.");
+  }
+
+  console.log("\nDevTo config removed.");
+  console.log("To complete uninstall, run: npm uninstall -g devto-mcp\n");
+}
+
 function printHelp() {
   console.log(`
 DevTo CLI — AI-powered work management
@@ -446,6 +523,7 @@ Usage:
   devto sync                           Re-sync workspace configuration
   devto verbose                        Toggle verbose mode
   devto config set anthropic-key <key> Store Anthropic API key
+  devto uninstall                      Remove all DevTo config and MCP settings
   devto help                           Show this help message
 
 After logging in, add DevTo to your Claude Code MCP config:
@@ -485,6 +563,9 @@ async function main() {
       break;
     case "config":
       await configSet();
+      break;
+    case "uninstall":
+      await uninstall();
       break;
     case "help":
     case "--help":
