@@ -56,6 +56,10 @@ export function getApiUrl(): string {
 }
 
 export function getAnthropicKey(): string {
+  // Prefer environment variable (set in .mcp.json by devto init)
+  const envKey = process.env.DEVTO_ANTHROPIC_KEY;
+  if (envKey) return envKey;
+
   const config = readConfig();
   if (config?.anthropic_key) return config.anthropic_key;
   throw new Error(
