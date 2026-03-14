@@ -73,7 +73,7 @@ async function validateKey(apiKey: string): Promise<boolean> {
     const res = await fetch(`${apiUrl}/api/v1/status`, {
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        "X-DevTo-Version": "0.1.1",
+        "X-DevTo-Version": "0.1.2",
       },
     });
     // 200 = valid key, 401 = invalid
@@ -165,7 +165,7 @@ async function status() {
     const res = await fetch(`${config.api_url}/api/v1/status`, {
       headers: {
         Authorization: `Bearer ${config.api_key}`,
-        "X-DevTo-Version": "0.1.1",
+        "X-DevTo-Version": "0.1.2",
       },
     });
 
@@ -307,7 +307,7 @@ async function doctor() {
     const res = await fetch(`${apiUrl}/api/v1/status`, {
       headers: {
         ...(config?.api_key ? { Authorization: `Bearer ${config.api_key}` } : {}),
-        "X-DevTo-Version": "0.1.1",
+        "X-DevTo-Version": "0.1.2",
       },
     });
 
@@ -332,7 +332,7 @@ async function doctor() {
       const res = await fetch(`${apiUrl}/api/v1/status`, {
         headers: {
           Authorization: `Bearer ${config.api_key}`,
-          "X-DevTo-Version": "0.1.1",
+          "X-DevTo-Version": "0.1.2",
         },
       });
       if (res.status === 401) {
@@ -357,7 +357,7 @@ async function doctor() {
       const res = await fetch(`${apiUrl}/api/v1/status`, {
         headers: {
           Authorization: `Bearer ${config.api_key}`,
-          "X-DevTo-Version": "0.1.1",
+          "X-DevTo-Version": "0.1.2",
         },
       });
       if (res.ok) {
@@ -407,7 +407,7 @@ async function sync() {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${config.api_key}`,
-        "X-DevTo-Version": "0.1.1",
+        "X-DevTo-Version": "0.1.2",
       },
     });
 
@@ -544,27 +544,35 @@ After logging in, add DevTo to your Claude Code MCP config:
 async function main() {
   switch (command) {
     case "login":
+    case "--login":
       await login();
       break;
     case "status":
+    case "--status":
       await status();
       break;
     case "init":
+    case "--init":
       await init();
       break;
     case "doctor":
+    case "--doctor":
       await doctor();
       break;
     case "sync":
+    case "--sync":
       await sync();
       break;
     case "verbose":
+    case "--verbose":
       await verbose();
       break;
     case "config":
+    case "--config":
       await configSet();
       break;
     case "uninstall":
+    case "--uninstall":
       await uninstall();
       break;
     case "help":
