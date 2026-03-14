@@ -76,7 +76,7 @@ async function validateKey(apiKey: string): Promise<boolean> {
     const res = await fetch(`${apiUrl}/api/v1/status`, {
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        "X-DevTo-Version": "0.1.6",
+        "X-DevTo-Version": "0.1.7",
       },
     });
     // 200 = valid key, 401 = invalid
@@ -178,7 +178,7 @@ async function status() {
     const res = await fetch(`${config.api_url}/api/v1/status`, {
       headers: {
         Authorization: `Bearer ${config.api_key}`,
-        "X-DevTo-Version": "0.1.6",
+        "X-DevTo-Version": "0.1.7",
       },
     });
 
@@ -298,7 +298,7 @@ async function doctor() {
     const res = await fetch(`${apiUrl}/api/v1/status`, {
       headers: {
         ...(config?.api_key ? { Authorization: `Bearer ${config.api_key}` } : {}),
-        "X-DevTo-Version": "0.1.6",
+        "X-DevTo-Version": "0.1.7",
       },
     });
 
@@ -323,7 +323,7 @@ async function doctor() {
       const res = await fetch(`${apiUrl}/api/v1/status`, {
         headers: {
           Authorization: `Bearer ${config.api_key}`,
-          "X-DevTo-Version": "0.1.6",
+          "X-DevTo-Version": "0.1.7",
         },
       });
       if (res.status === 401) {
@@ -348,7 +348,7 @@ async function doctor() {
       const res = await fetch(`${apiUrl}/api/v1/status`, {
         headers: {
           Authorization: `Bearer ${config.api_key}`,
-          "X-DevTo-Version": "0.1.6",
+          "X-DevTo-Version": "0.1.7",
         },
       });
       if (res.ok) {
@@ -419,7 +419,7 @@ async function sync() {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${config.api_key}`,
-        "X-DevTo-Version": "0.1.6",
+        "X-DevTo-Version": "0.1.7",
       },
     });
 
