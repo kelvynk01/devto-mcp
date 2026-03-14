@@ -21,7 +21,7 @@ import {
   getProjectSummary,
 } from "./tools";
 
-const CURRENT_VERSION = "0.1.8";
+const CURRENT_VERSION = "0.1.9";
 
 // Auto-update check (non-blocking)
 (async () => {

@@ -76,7 +76,7 @@ async function validateKey(apiKey: string): Promise<boolean> {
     const res = await fetch(`${apiUrl}/api/v1/status`, {
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        "X-DevTo-Version": "0.1.8",
+        "X-DevTo-Version": "0.1.9",
       },
     });
     // 200 = valid key, 401 = invalid
@@ -178,7 +178,7 @@ async function status() {
     const res = await fetch(`${config.api_url}/api/v1/status`, {
       headers: {
         Authorization: `Bearer ${config.api_key}`,
-        "X-DevTo-Version": "0.1.8",
+        "X-DevTo-Version": "0.1.9",
       },
     });
 
@@ -216,65 +216,64 @@ async function init() {
   console.log("\nDevTo Init — Configure Claude Code MCP\n");
 
   const config = readConfig();
-  const apiKey = config?.api_key ?? "their-key-here";
+  const apiKey = config?.api_key;
 
-  // Claude Code uses .mcp.json in the project root
-  const configPath = path.join(process.cwd(), ".mcp.json");
-  console.log(`Config file: ${configPath}`);
-
-  // Read existing config or start fresh
-  let mcpConfig: Record<string, unknown> = {};
-  try {
-    if (fs.existsSync(configPath)) {
-      const raw = fs.readFileSync(configPath, "utf-8");
-      mcpConfig = JSON.parse(raw);
-    }
-  } catch {
-    // Start fresh if corrupt
+  if (!apiKey) {
+    console.error("No API key found. Run `devto login` first, then re-run `devto init`.\n");
+    process.exit(1);
   }
 
-  // Ensure mcpServers object exists
-  if (!mcpConfig.mcpServers || typeof mcpConfig.mcpServers !== "object") {
-    mcpConfig.mcpServers = {};
-  }
-
-  // Build env block — always include API key, include Anthropic key if available
-  const envBlock: Record<string, string> = {
-    DEVTO_API_KEY: apiKey,
-  };
-
-  // Include Anthropic key in .mcp.json so MCP server is self-contained
+  // Check for Anthropic key
   let anthropicKey: string | undefined;
   try {
     anthropicKey = getAnthropicKey();
-    envBlock.DEVTO_ANTHROPIC_KEY = anthropicKey;
   } catch {
     // No Anthropic key yet — skip
   }
 
-  // Inject/update devto block
-  // On Windows, Claude Code can't spawn npm shims directly — needs cmd /c npx wrapper
-  const isWindows = process.platform === "win32";
-  const serverBlock: Record<string, unknown> = isWindows
-    ? { command: "cmd", args: ["/c", "npx", "-y", "devto-mcp"], env: envBlock }
-    : { command: "npx", args: ["-y", "devto-mcp"], env: envBlock };
+  // Remove existing devto server first (ignore errors if not present)
+  console.log("Registering DevTo MCP server with Claude Code...\n");
+  const { execSync } = require("child_process");
 
-  (mcpConfig.mcpServers as Record<string, unknown>)["devto"] = serverBlock;
-
-  // Write config
-  const dir = path.dirname(configPath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  try {
+    execSync("claude mcp remove devto", { stdio: "ignore" });
+  } catch {
+    // Not present — fine
   }
-  fs.writeFileSync(configPath, JSON.stringify(mcpConfig, null, 2));
 
-  console.log("DevTo MCP server block injected successfully.");
-  if (apiKey === "their-key-here") {
-    console.log(
-      "\nNote: No API key found in local config. Run `devto login` first, then re-run `devto init`."
-    );
-  } else {
-    console.log(`\nAPI key (${apiKey.slice(0, 12)}...) written to MCP config.`);
+  // Use `claude mcp add-json` to register properly — handles quoting reliably
+  const isWindows = process.platform === "win32";
+  const envObj: Record<string, string> = { DEVTO_API_KEY: apiKey };
+  if (anthropicKey) envObj.DEVTO_ANTHROPIC_KEY = anthropicKey;
+
+  const jsonConfig = JSON.stringify({
+    command: isWindows ? "cmd" : "npx",
+    args: isWindows ? ["/c", "npx", "-y", "devto-mcp"] : ["-y", "devto-mcp"],
+    env: envObj,
+  });
+
+  try {
+    const { execSync } = require("child_process");
+
+    // Use single quotes in bash, escaped double quotes in cmd
+    const escaped = isWindows
+      ? jsonConfig.replace(/"/g, '\\"')
+      : jsonConfig;
+    const quote = isWindows ? '"' : "'";
+
+    execSync(`claude mcp add-json devto ${quote}${escaped}${quote}`, { stdio: "inherit" });
+    console.log("\nDevTo MCP server registered successfully.");
+    console.log(`API key (${apiKey.slice(0, 12)}...) configured.`);
+  } catch {
+    console.error("\nFailed to register via Claude CLI. Is Claude Code installed?");
+    console.error("Install: https://docs.anthropic.com/en/docs/claude-code\n");
+    console.error("As a fallback, you can add manually via:");
+    if (isWindows) {
+      console.error(`  claude mcp add -e DEVTO_API_KEY=${apiKey} devto -- cmd /c npx -y devto-mcp`);
+    } else {
+      console.error(`  claude mcp add -e DEVTO_API_KEY=${apiKey} devto -- npx -y devto-mcp`);
+    }
+    process.exit(1);
   }
 
   // Warn if Anthropic key is missing
@@ -282,7 +281,7 @@ async function init() {
     console.log("\nNote: Anthropic API key not configured.");
     console.log("  AI plan generation (create_plan) requires an Anthropic key.");
     console.log("  Run: devto config set anthropic-key sk-ant-xxxx");
-    console.log("  Then re-run `devto init` to embed it in the MCP config.");
+    console.log("  Then re-run `devto init` to update the MCP config.");
     console.log("  Get one at: https://console.anthropic.com/settings/keys");
   }
 
@@ -301,7 +300,7 @@ async function doctor() {
     const res = await fetch(`${apiUrl}/api/v1/status`, {
       headers: {
         ...(config?.api_key ? { Authorization: `Bearer ${config.api_key}` } : {}),
-        "X-DevTo-Version": "0.1.8",
+        "X-DevTo-Version": "0.1.9",
       },
     });
 
@@ -326,7 +325,7 @@ async function doctor() {
       const res = await fetch(`${apiUrl}/api/v1/status`, {
         headers: {
           Authorization: `Bearer ${config.api_key}`,
-          "X-DevTo-Version": "0.1.8",
+          "X-DevTo-Version": "0.1.9",
         },
       });
       if (res.status === 401) {
@@ -351,7 +350,7 @@ async function doctor() {
       const res = await fetch(`${apiUrl}/api/v1/status`, {
         headers: {
           Authorization: `Bearer ${config.api_key}`,
-          "X-DevTo-Version": "0.1.8",
+          "X-DevTo-Version": "0.1.9",
         },
       });
       if (res.ok) {
@@ -422,7 +421,7 @@ async function sync() {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${config.api_key}`,
-        "X-DevTo-Version": "0.1.8",
+        "X-DevTo-Version": "0.1.9",
       },
     });
 
@@ -488,21 +487,30 @@ async function uninstall() {
 
   if (purge) {
     console.log("\nDevTo Uninstall (full purge)\n");
-    const confirm = await prompt("This will remove DevTo from this project AND delete global credentials (~/.devto). Continue? (y/n): ");
+    const confirm = await prompt("This will remove DevTo MCP server AND delete global credentials (~/.devto). Continue? (y/n): ");
     if (confirm.toLowerCase() !== "y" && confirm.toLowerCase() !== "yes") {
       console.log("Cancelled.\n");
       return;
     }
   } else {
     console.log("\nDevTo Uninstall\n");
-    const confirm = await prompt("Remove DevTo from this project's .mcp.json? (y/n): ");
+    const confirm = await prompt("Remove DevTo MCP server from Claude Code? (y/n): ");
     if (confirm.toLowerCase() !== "y" && confirm.toLowerCase() !== "yes") {
       console.log("Cancelled.\n");
       return;
     }
   }
 
-  // Always: remove devto from .mcp.json in current directory
+  // Remove via Claude CLI
+  const { spawnSync } = require("child_process");
+  try {
+    spawnSync("claude", ["mcp", "remove", "devto"], { stdio: "inherit", shell: true });
+    console.log("Removed DevTo MCP server from Claude Code.");
+  } catch {
+    console.log("Could not remove via Claude CLI (may not be registered).");
+  }
+
+  // Also clean up .mcp.json if it has a devto entry (legacy)
   const mcpJsonPath = path.join(process.cwd(), ".mcp.json");
   if (fs.existsSync(mcpJsonPath)) {
     try {
@@ -511,15 +519,11 @@ async function uninstall() {
       if (mcpConfig.mcpServers?.devto) {
         delete mcpConfig.mcpServers.devto;
         fs.writeFileSync(mcpJsonPath, JSON.stringify(mcpConfig, null, 2));
-        console.log(`Removed devto from: ${mcpJsonPath}`);
-      } else {
-        console.log("DevTo was not in this project's .mcp.json.");
+        console.log(`Also removed devto from: ${mcpJsonPath}`);
       }
     } catch {
       // Skip corrupt config
     }
-  } else {
-    console.log("No .mcp.json found in this project.");
   }
 
   // Only with --purge: remove global ~/.devto config
