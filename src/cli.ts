@@ -73,7 +73,7 @@ async function validateKey(apiKey: string): Promise<boolean> {
     const res = await fetch(`${apiUrl}/api/v1/status`, {
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        "X-DevTo-Version": "0.1.3",
+        "X-DevTo-Version": "0.1.4",
       },
     });
     // 200 = valid key, 401 = invalid
@@ -165,7 +165,7 @@ async function status() {
     const res = await fetch(`${config.api_url}/api/v1/status`, {
       headers: {
         Authorization: `Bearer ${config.api_key}`,
-        "X-DevTo-Version": "0.1.3",
+        "X-DevTo-Version": "0.1.4",
       },
     });
 
@@ -205,40 +205,8 @@ async function init() {
   const config = readConfig();
   const apiKey = config?.api_key ?? "their-key-here";
 
-  // Check common Claude Code MCP config locations
-  const candidates = [
-    path.join(process.cwd(), ".claude", "claude_desktop_config.json"),
-    path.join(os.homedir(), ".config", "claude", "claude_desktop_config.json"),
-    path.join(os.homedir(), "Library", "Application Support", "Claude", "claude_desktop_config.json"),
-  ];
-
-  let configPath: string | null = null;
-
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) {
-      configPath = candidate;
-      break;
-    }
-  }
-
-  if (!configPath) {
-    // Default to the first candidate that has a parent dir, or create one
-    for (const candidate of candidates) {
-      const dir = path.dirname(candidate);
-      if (fs.existsSync(dir)) {
-        configPath = candidate;
-        break;
-      }
-    }
-
-    if (!configPath) {
-      // Fallback: create .claude dir in cwd
-      const dir = path.join(process.cwd(), ".claude");
-      fs.mkdirSync(dir, { recursive: true });
-      configPath = path.join(dir, "claude_desktop_config.json");
-    }
-  }
-
+  // Claude Code uses .mcp.json in the project root
+  const configPath = path.join(process.cwd(), ".mcp.json");
   console.log(`Config file: ${configPath}`);
 
   // Read existing config or start fresh
@@ -306,7 +274,7 @@ async function doctor() {
     const res = await fetch(`${apiUrl}/api/v1/status`, {
       headers: {
         ...(config?.api_key ? { Authorization: `Bearer ${config.api_key}` } : {}),
-        "X-DevTo-Version": "0.1.3",
+        "X-DevTo-Version": "0.1.4",
       },
     });
 
@@ -331,7 +299,7 @@ async function doctor() {
       const res = await fetch(`${apiUrl}/api/v1/status`, {
         headers: {
           Authorization: `Bearer ${config.api_key}`,
-          "X-DevTo-Version": "0.1.3",
+          "X-DevTo-Version": "0.1.4",
         },
       });
       if (res.status === 401) {
@@ -356,7 +324,7 @@ async function doctor() {
       const res = await fetch(`${apiUrl}/api/v1/status`, {
         headers: {
           Authorization: `Bearer ${config.api_key}`,
-          "X-DevTo-Version": "0.1.3",
+          "X-DevTo-Version": "0.1.4",
         },
       });
       if (res.ok) {
@@ -406,7 +374,7 @@ async function sync() {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${config.api_key}`,
-        "X-DevTo-Version": "0.1.3",
+        "X-DevTo-Version": "0.1.4",
       },
     });
 
@@ -476,26 +444,19 @@ async function uninstall() {
     return;
   }
 
-  // 1. Remove devto from Claude Code MCP config
-  const candidates = [
-    path.join(process.cwd(), ".claude", "claude_desktop_config.json"),
-    path.join(os.homedir(), ".config", "claude", "claude_desktop_config.json"),
-    path.join(os.homedir(), "Library", "Application Support", "Claude", "claude_desktop_config.json"),
-  ];
-
-  for (const configPath of candidates) {
-    if (fs.existsSync(configPath)) {
-      try {
-        const raw = fs.readFileSync(configPath, "utf-8");
-        const mcpConfig = JSON.parse(raw);
-        if (mcpConfig.mcpServers?.devto) {
-          delete mcpConfig.mcpServers.devto;
-          fs.writeFileSync(configPath, JSON.stringify(mcpConfig, null, 2));
-          console.log(`Removed devto from MCP config: ${configPath}`);
-        }
-      } catch {
-        // Skip corrupt configs
+  // 1. Remove devto from .mcp.json in current directory
+  const mcpJsonPath = path.join(process.cwd(), ".mcp.json");
+  if (fs.existsSync(mcpJsonPath)) {
+    try {
+      const raw = fs.readFileSync(mcpJsonPath, "utf-8");
+      const mcpConfig = JSON.parse(raw);
+      if (mcpConfig.mcpServers?.devto) {
+        delete mcpConfig.mcpServers.devto;
+        fs.writeFileSync(mcpJsonPath, JSON.stringify(mcpConfig, null, 2));
+        console.log(`Removed devto from: ${mcpJsonPath}`);
       }
+    } catch {
+      // Skip corrupt config
     }
   }
 
@@ -525,7 +486,8 @@ Usage:
   devto uninstall                      Remove all DevTo config and MCP settings
   devto help                           Show this help message
 
-After logging in, add DevTo to your Claude Code MCP config:
+After logging in, run \`devto init\` in your project to add DevTo to .mcp.json,
+or manually add this to your project's .mcp.json:
 
   {
     "mcpServers": {
